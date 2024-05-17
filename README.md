@@ -1,8 +1,8 @@
  AWS Notify Teams Terraform module
 
-This module creates an SNS topic (or uses an existing one) and an AWS Lambda function that sends notifications to Teams using the [incoming webhooks API](https://api.teams.com/incoming-webhooks).
+This module creates an SNS topic (or uses an existing one) and an AWS Lambda function that sends notifications to Teams using the [incoming webhooks API](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook?tabs=newteams%2Cdotnet).
 
-Start by setting up an [incoming webhook integration](https://my.teams.com/services/new/incoming-webhook/) in your Teams workspace.
+Start by setting up an [incoming webhook integration](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook?tabs=newteams%2Cdotnet) in your Teams workspace.
 
 Doing serverless with Terraform? Check out [serverless.tf framework](https://serverless.tf), which aims to simplify all operations when working with the serverless in Terraform.
 
@@ -18,7 +18,7 @@ Doing serverless with Terraform? Check out [serverless.tf framework](https://ser
 
 ## Feature Roadmap
 
-- More SNS message types: [Send pull-request to add support of other message types](https://github.com/terraform-aws-modules/terraform-aws-notify-teams/pulls)
+- More SNS message types: [Send pull-request to add support of other message types](https://github.com/binbashar/terraform-aws-notify-teams/pulls)
 
 ## Usage
 
@@ -55,14 +55,14 @@ If you want to subscribe the AWS Lambda Function created by this module to an ex
 
 ## Examples
 
-- [notify-teams-simple](https://github.com/terraform-aws-modules/terraform-aws-notify-teams/tree/master/examples/notify-teams-simple) - Creates SNS topic which sends messages to Teams channel.
+- [notify-teams-simple](https://github.com/binbashar/terraform-aws-notify-teams/tree/master/examples/notify-teams-simple) - Creates SNS topic which sends messages to Teams channel.
 
 
 ## Testing with pytest
 
 To run the tests:
 
-1.  Set up a dedicated teams channel as a test sandbox with it's own webhook. See [Teams Incoming Webhooks docs](https://api.teams.com/messaging/webhooks) for details.
+1.  Set up a dedicated teams channel as a test sandbox with it's own webhook. See [Teams Incoming Webhooks docs](ttps://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook?tabs=newteams%2Cdotnet) for details.
 2.  Make a copy of the sample pytest configuration and edit as needed.
 
         cp functions/pytest.ini.sample functions/pytest.ini
@@ -150,11 +150,3 @@ To run the tests:
 | <a name="output_notify_teams_lambda_function_version"></a> [notify\_teams\_lambda\_function\_version](#output\_notify\_teams\_lambda\_function\_version) | Latest published version of your Lambda function |
 | <a name="output_this_teams_topic_arn"></a> [this\_teams\_topic\_arn](#output\_this\_teams\_topic\_arn) | The ARN of the SNS topic from which messages will be sent to Teams |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
-
-## Authors
-
-Module is maintained by [Anton Babenko](https://github.com/antonbabenko) with help from [these awesome contributors](https://github.com/terraform-aws-modules/terraform-aws-notify-teams/graphs/contributors).
-
-## License
-
-Apache 2 Licensed. See [LICENSE](https://github.com/terraform-aws-modules/terraform-aws-notify-teams/tree/master/LICENSE) for full details.
