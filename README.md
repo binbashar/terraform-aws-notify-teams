@@ -150,3 +150,11 @@ To run the tests:
 | <a name="output_notify_teams_lambda_function_version"></a> [notify\_teams\_lambda\_function\_version](#output\_notify\_teams\_lambda\_function\_version) | Latest published version of your Lambda function |
 | <a name="output_this_teams_topic_arn"></a> [this\_teams\_topic\_arn](#output\_this\_teams\_topic\_arn) | The ARN of the SNS topic from which messages will be sent to Teams |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
+
+## Authors
+
+Original code by [Anton Babenko](https://github.com/antonbabenko) with help from [these awesome contributors](https://github.com/binbashar/terraform-aws-notify-teams/graphs/contributors).
+
+## License
+
+Apache 2 Licensed. See [LICENSE](https://github.com/binbashar/terraform-aws-notify-teams/tree/master/LICENSE) for full details.
