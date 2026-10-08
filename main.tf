@@ -16,7 +16,7 @@ locals {
   sns_topic_arn = element(
     concat(
       aws_sns_topic.this.*.arn,
-      ["arn:${data.aws_partition.current.id}:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.sns_topic_name}"],
+      ["arn:${data.aws_partition.current.partition}:sns:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:${var.sns_topic_name}"],
       [""]
     ),
     0,
@@ -66,13 +66,13 @@ resource "aws_sns_topic_subscription" "sns_notify_teams" {
 
   topic_arn     = local.sns_topic_arn
   protocol      = "lambda"
-  endpoint      = module.lambda.this_lambda_function_arn
+  endpoint      = module.lambda.lambda_function_arn
   filter_policy = var.subscription_filter_policy
 }
 
 module "lambda" {
   source  = "terraform-aws-modules/lambda/aws"
-  version = "1.47.0"
+  version = "7.21.1"
 
   create = var.create
 
@@ -80,8 +80,8 @@ module "lambda" {
   description   = var.lambda_description
 
   handler                        = "notify_teams.lambda_handler"
-  source_path                    = "${path.module}/functions/notify_teams.py"
-  runtime                        = "python3.8"
+  source_path                    = var.lambda_source_path != null ? var.lambda_source_path : "${path.module}/functions/notify_teams.py"
+  runtime                        = var.lambda_runtime
   timeout                        = 30
   kms_key_arn                    = var.kms_key_arn
   reserved_concurrent_executions = var.reserved_concurrent_executions
