@@ -6,7 +6,7 @@ import os
 import urllib.parse
 import urllib.request
 from enum import Enum
-from typing import Any, Dict, Optional, Union, cast
+from typing import Any, Dict, Optional, Union
 from urllib.error import HTTPError
 
 import boto3
@@ -166,12 +166,25 @@ def determine_severity(severity_score: float) -> str:
 
 
 class AwsHealthCategory(Enum):
-    """Maps AWS Health event categories to Teams message format color"""
-    ISSUE = "#FF5733"  # Example color for the 'ISSUE' category
-    ACCOUNT_NOTIFICATION = "#FFC300"  # Example color for 'ACCOUNT_NOTIFICATION'
-    SCHEDULED_CHANGE = "#33FF57"  # Example color for 'SCHEDULED_CHANGE'
-    INVESTIGATION = "#335BFF"  # Example color for 'INVESTIGATION'
-    DEFAULT = "#777777"  # Default gray color for unmapped categories
+    """Maps AWS Health event categories to Teams message format color.
+
+    Member names match the eventTypeCategory values AWS Health sends.
+    """
+    issue = "#FF5733"
+    accountNotification = "#FFC300"
+    scheduledChange = "#33FF57"
+    investigation = "#335BFF"
+
+
+AWS_HEALTH_DEFAULT_COLOR = "#777777"  # Gray for unmapped categories
+
+
+def get_aws_health_color(category: Optional[str]) -> str:
+    """Get the message color for an AWS Health event category"""
+    try:
+        return AwsHealthCategory[category].value
+    except KeyError:
+        return AWS_HEALTH_DEFAULT_COLOR
 
 def format_aws_health(message: Dict[str, Any], region: str) -> Dict[str, Any]:
     """Format AWS Health event into Teams message format."""
@@ -185,7 +198,7 @@ def format_aws_health(message: Dict[str, Any], region: str) -> Dict[str, Any]:
     return {
         "@type": "MessageCard",
         "@context": "https://schema.org/extensions",
-        "themeColor": AwsHealthCategory[detail.get("eventTypeCategory", "DEFAULT")].value,
+        "themeColor": get_aws_health_color(detail.get("eventTypeCategory")),
         "summary": f"New AWS Health Event for {service}",
         "sections": [{
             "activityTitle": f"New AWS Health Event for {service}",
@@ -245,6 +258,13 @@ def format_default(
 
 
 
+def is_teams_payload(message: Dict[str, Any]) -> bool:
+    """Check whether the message is already a Teams payload (MessageCard or Adaptive Card message)"""
+    return message.get("@type") == "MessageCard" or (
+        message.get("type") == "message" and "attachments" in message
+    )
+
+
 def get_teams_message_payload(message: Union[str, Dict], region: str, subject: Optional[str] = None) -> Dict:
     """
     Parse notification message and format into Microsoft Teams message payload
@@ -255,70 +275,54 @@ def get_teams_message_payload(message: Union[str, Dict], region: str, subject: O
     :returns: Microsoft Teams message payload
     """
 
-    # Since Teams format is different, you might want to adjust the formatting functions
-    # For simplicity, I'm reusing the teams functions but these will need to be updated to match Teams card format
-    
     if isinstance(message, str):
         try:
             message = json.loads(message)
         except json.JSONDecodeError:
             logging.info("Not a structured payload, just a string message")
 
-    message = cast(Dict[str, Any], message)
+    # Plain-text messages (e.g. AWS Budgets) and non-object JSON go to the default formatter
+    if not isinstance(message, dict):
+        return format_default(message=str(message), subject=subject)
 
     if "AlarmName" in message:
-        notification = format_cloudwatch_alarm(message=message, region=region)
-        # Modify format_cloudwatch_alarm to match Teams format
+        return format_cloudwatch_alarm(message=message, region=region)
 
-    elif (
-        isinstance(message, Dict) and message.get("detail-type") == "GuardDuty Finding"
-    ):
-        notification = format_guardduty_finding(
-            message=message, region=message["region"]
-        )
-        # Modify format_guardduty_finding to match Teams format
+    if message.get("detail-type") == "GuardDuty Finding":
+        return format_guardduty_finding(message=message, region=message["region"])
 
-    elif isinstance(message, Dict) and message.get("detail-type") == "AWS Health Event":
-        notification = format_aws_health(message=message, region=message["region"])
-        # Modify format_aws_health to match Teams format
+    if message.get("detail-type") == "AWS Health Event":
+        return format_aws_health(message=message, region=message["region"])
 
-    elif "attachments" in message or "text" in message:
-        # Modify this section to match Teams format
-        pass
+    if is_teams_payload(message):
+        return message
 
-    else:
-        notification = format_default(message=message, subject=subject)
-        # Modify format_default to match Teams format
-
-    return notification
+    return format_default(message=message, subject=subject)
 
 
-
-def send_teams_notification(payload: Dict[str, Any]) -> str:
+def send_teams_notification(payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Send notification payload to Microsoft Teams
 
     :params payload: formatted Microsoft Teams message card
-    :returns: response details from sending notification
+    :returns: response status code and headers
     """
-    
+
     teams_url = os.environ["TEAMS_WEBHOOK_URL"]
-    
+
     if not teams_url.startswith("http"):
         teams_url = decrypt_url(teams_url)
-    
+
     headers = {"Content-Type": "application/json"}
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(teams_url, data=data, headers=headers)
-    
-    try:
-        result = urllib.request.urlopen(req)
-        return json.dumps({"code": result.getcode(), "info": result.info().as_string()})
-    
-    except HTTPError as e:
-        logging.error(f"{e}: result")
-        return json.dumps({"code": e.getcode(), "info": e.info().as_string()})
 
+    try:
+        with urllib.request.urlopen(req) as result:
+            return {"code": result.getcode(), "info": result.info().as_string()}
+
+    except HTTPError as e:
+        return {"code": e.getcode(), "info": e.info().as_string()}
 
 
 def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> str:
@@ -327,26 +331,28 @@ def lambda_handler(event: Dict[str, Any], context: Dict[str, Any]) -> str:
 
     :param event: lambda expected event object
     :param context: lambda expected context object
-    :returns: none
+    :returns: JSON list with the response of each record
     """
     if os.environ.get("LOG_EVENTS", "False") == "True":
         logging.info(f"Event logging enabled: `{json.dumps(event)}`")
 
+    responses = []
     for record in event["Records"]:
         sns = record["Sns"]
-        subject = sns["Subject"]
+        subject = sns.get("Subject")
         message = sns["Message"]
         region = sns["TopicArn"].split(":")[3]
 
         payload = get_teams_message_payload(
             message=message, region=region, subject=subject
         )
-        response = send_teams_notification(payload=payload)
+        responses.append(send_teams_notification(payload=payload))
 
-    if json.loads(response)["code"] != 200:
-        response_info = json.loads(response)["info"]
-        logging.error(
-            f"Error: received status `{response_info}` using event `{event}` and context `{context}`"
-        )
+    # Workflows webhooks answer 202 Accepted, legacy connectors answered 200 OK
+    failed = [r for r in responses if not 200 <= r["code"] < 300]
+    if failed:
+        logging.error(f"Error: received status `{failed}` using event `{event}`")
+        # Raising marks the invocation as failed, so SNS retries it
+        raise RuntimeError(f"Teams webhook returned {[r['code'] for r in failed]}")
 
-    return response
+    return json.dumps(responses)

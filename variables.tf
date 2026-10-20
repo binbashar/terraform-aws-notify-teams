@@ -19,7 +19,19 @@ variable "lambda_role" {
 variable "lambda_function_name" {
   description = "The name of the Lambda function to create"
   type        = string
-  default     = "notify_Teams"
+  default     = "notify_teams"
+}
+
+variable "lambda_runtime" {
+  description = "The Lambda runtime used by the function"
+  type        = string
+  default     = "python3.13"
+}
+
+variable "lambda_source_path" {
+  description = "The source path of a custom Lambda function. Defaults to the bundled functions/notify_teams.py"
+  type        = string
+  default     = null
 }
 
 variable "lambda_description" {

@@ -9,11 +9,6 @@ output "sns_topic_arn_monitoring" {
   value       = module.notify_teams.this_teams_topic_arn
 }
 
-output "sns_topic_arn" {
-  description = "The ARN of the SNS topic from which messages will be sent to teams"
-  value       = module.notify_teams.teams_topic_arn
-}
-
 output "lambda_iam_role_arn_monitoring" {
   description = "The ARN of the IAM role used by Lambda function"
   value       = module.notify_teams.lambda_iam_role_arn
@@ -45,6 +40,6 @@ output "notify_teams_lambda_function_name_monitoring" {
 }
 
 output "notify_teams_lambda_function_version_monitoring" {
-  description = "TLatest published version of your Lambda function"
+  description = "Latest published version of your Lambda function"
   value       = module.notify_teams.notify_teams_lambda_function_version
 }
